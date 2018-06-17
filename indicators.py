@@ -6,6 +6,13 @@ License: GNU General Public License
 import numpy as np
 import pandas as pd
 
+OPEN = 'O'
+HIGH = 'H'
+LOW = 'L'
+CLOSE = 'C'
+VOLUME = 'Volume'
+
+
 """
 Exponential moving average
 Source: http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:moving_averages
@@ -17,8 +24,9 @@ Params:
 Returns:
     copy of 'data' DataFrame with 'ema[period]' column added
 """
-def ema(data, period=0, column='<CLOSE>'):
-    data['ema' + str(period)] = data[column].ewm(ignore_na=False, min_periods=period, com=period, adjust=True).mean()
+def ema(data, period=0, column=CLOSE):
+    col = 'ema' + str(period)
+    data[col] = data[column].ewm(ignore_na=False, min_periods=period, com=period, adjust=True).mean()
     
     return data
 
@@ -35,14 +43,14 @@ Params:
 Returns:
     copy of 'data' DataFrame with 'macd_val' and 'macd_signal_line' columns added
 """
-def macd(data, period_long=26, period_short=12, period_signal=9, column='<CLOSE>'):
+def macd(data, period_long=26, period_short=12, period_signal=9, column=CLOSE):
     remove_cols = []
     if not 'ema' + str(period_long) in data.columns:
-        data = ema(data, period_long)
+        data = ema(data, period_long, column)
         remove_cols.append('ema' + str(period_long))
 
     if not 'ema' + str(period_short) in data.columns:
-        data = ema(data, period_short)
+        data = ema(data, period_short, column)
         remove_cols.append('ema' + str(period_short))
 
     data['macd_val'] = data['ema' + str(period_short)] - data['ema' + str(period_long)]
@@ -67,7 +75,7 @@ Params:
 Returns:
     copy of 'data' DataFrame with 'acc_dist' and 'acc_dist_ema[trend_periods]' columns added
 """
-def acc_dist(data, trend_periods=21, open_col='<OPEN>', high_col='<HIGH>', low_col='<LOW>', close_col='<CLOSE>', vol_col='<VOL>'):
+def acc_dist(data, trend_periods=21, open_col=OPEN, high_col=HIGH, low_col=LOW, close_col=CLOSE, vol_col=VOLUME):
     for index, row in data.iterrows():
         if row[high_col] != row[low_col]:
             ac = ((row[close_col] - row[low_col]) - (row[high_col] - row[close_col])) / (row[high_col] - row[low_col]) * row[vol_col]
@@ -90,7 +98,7 @@ Params:
 Returns:
     copy of 'data' DataFrame with 'obv' and 'obv_ema[trend_periods]' columns added
 """
-def on_balance_volume(data, trend_periods=21, close_col='<CLOSE>', vol_col='<VOL>'):
+def on_balance_volume(data, trend_periods=21, close_col=CLOSE, vol_col=VOLUME):
     for index, row in data.iterrows():
         if index > 0:
             last_obv = data.at[index - 1, 'obv']
@@ -122,14 +130,14 @@ Params:
 Returns:
     copy of 'data' DataFrame with 'pvt' and 'pvt_ema[trend_periods]' columns added
 """
-def price_volume_trend(data, trend_periods=21, close_col='<CLOSE>', vol_col='<VOL>'):
+def price_volume_trend(data, trend_periods=21, close_col=CLOSE, vol_col=VOLUME):
     for index, row in data.iterrows():
         if index > 0:
             last_val = data.at[index - 1, 'pvt']
-            last_close = data.at[index - 1, close_col]
-            today_close = row[close_col]
+            last_CLOSE = data.at[index - 1, close_col]
+            today_CLOSE = row[close_col]
             today_vol = row[vol_col]
-            current_val = last_val + (today_vol * (today_close - last_close) / last_close)
+            current_val = last_val + (today_vol * (today_CLOSE - last_CLOSE) / last_CLOSE)
         else:
             current_val = row[vol_col]
 
@@ -155,7 +163,7 @@ Params:
 Returns:
     copy of 'data' DataFrame with 'atr' (and 'true_range' if 'drop_tr' == True) column(s) added
 """
-def average_true_range(data, trend_periods=14, open_col='<OPEN>', high_col='<HIGH>', low_col='<LOW>', close_col='<CLOSE>', drop_tr = True):
+def average_true_range(data, trend_periods=14, open_col=OPEN, high_col=HIGH, low_col=LOW, close_col=CLOSE, drop_tr = True):
     for index, row in data.iterrows():
         prices = [row[high_col], row[low_col], row[close_col], row[open_col]]
         if index > 0:
@@ -185,7 +193,7 @@ Params:
 Returns:
     copy of 'data' DataFrame with 'bol_bands_middle', 'bol_bands_upper' and 'bol_bands_lower' columns added
 """
-def bollinger_bands(data, trend_periods=20, close_col='<CLOSE>'):
+def bollinger_bands(data, trend_periods=20, close_col=CLOSE):
 
     data['bol_bands_middle'] = data[close_col].ewm(ignore_na=False, min_periods=0, com=trend_periods, adjust=True).mean()
     for index, row in data.iterrows():
@@ -221,8 +229,8 @@ Params:
 Returns:
     copy of 'data' DataFrame with 'ch_osc' column added
 """
-def chaikin_oscillator(data, periods_short=3, periods_long=10, high_col='<HIGH>',
-                       low_col='<LOW>', close_col='<CLOSE>', vol_col='<VOL>'):
+def chaikin_oscillator(data, periods_short=3, periods_long=10, high_col=HIGH,
+                       low_col=LOW, close_col=CLOSE, vol_col=VOLUME):
     ac = pd.Series([])
     val_last = 0
 	
@@ -232,7 +240,7 @@ def chaikin_oscillator(data, periods_short=3, periods_long=10, high_col='<HIGH>'
         else:
             val = val_last
         ac.set_value(index, val)
-	val_last = val
+    val_last = val
 
     ema_long = ac.ewm(ignore_na=False, min_periods=0, com=periods_long, adjust=True).mean()
     ema_short = ac.ewm(ignore_na=False, min_periods=0, com=periods_short, adjust=True).mean()
@@ -252,7 +260,7 @@ Params:
 Returns:
     copy of 'data' DataFrame with 'typical_price' column added
 """
-def typical_price(data, high_col = '<HIGH>', low_col = '<LOW>', close_col = '<CLOSE>'):
+def typical_price(data, high_col = HIGH, low_col = LOW, close_col = CLOSE):
     
     data['typical_price'] = (data[high_col] + data[low_col] + data[close_col]) / 3
 
@@ -271,7 +279,7 @@ Params:
 Returns:
     copy of 'data' DataFrame with 'emv' and 'emv_ema_[period]' columns added
 """
-def ease_of_movement(data, period=14, high_col='<HIGH>', low_col='<LOW>', vol_col='<VOL>'):
+def ease_of_movement(data, period=14, high_col=HIGH, low_col=LOW, vol_col=VOLUME):
     for index, row in data.iterrows():
         if index > 0:
             midpoint_move = (row[high_col] + row[low_col]) / 2 - (data.at[index - 1, high_col] + data.at[index - 1, low_col]) / 2
@@ -308,7 +316,7 @@ Params:
 Returns:
     copy of 'data' DataFrame with 'mass_index' column added
 """
-def mass_index(data, period=25, ema_period=9, high_col='<HIGH>', low_col='<LOW>'):
+def mass_index(data, period=25, ema_period=9, high_col=HIGH, low_col=LOW):
     high_low = data[high_col] - data[low_col] + 0.000001	#this is to avoid division by zero below
     ema = high_low.ewm(ignore_na=False, min_periods=0, com=ema_period, adjust=True).mean()
     ema_ema = ema.ewm(ignore_na=False, min_periods=0, com=ema_period, adjust=True).mean()
@@ -335,7 +343,7 @@ Params:
 Returns:
     copy of 'data' DataFrame with 'adx', 'dxi', 'di_plus', 'di_minus' columns added
 """
-def directional_movement_index(data, periods=14, high_col='<HIGH>', low_col='<LOW>'):
+def directional_movement_index(data, periods=14, high_col=HIGH, low_col=LOW):
     remove_tr_col = False
     if not 'true_range' in data.columns:
         data = average_true_range(data, drop_tr = False)
@@ -382,7 +390,7 @@ Params:
 Returns:
     copy of 'data' DataFrame with 'money_flow_index' column added
 """
-def money_flow_index(data, periods=14, vol_col='<VOL>'):
+def money_flow_index(data, periods=14, vol_col=VOLUME):
     remove_tp_col = False
     if not 'typical_price' in data.columns:
         data = typical_price(data)
@@ -435,15 +443,15 @@ Params:
 Returns:
     copy of 'data' DataFrame with 'nvi' and 'nvi_ema' columns added
 """
-def negative_volume_index(data, periods=255, close_col='<CLOSE>', vol_col='<VOL>'):
+def negative_volume_index(data, periods=255, close_col=CLOSE, vol_col=VOLUME):
     data['nvi'] = 0.
     
     for index,row in data.iterrows():
         if index > 0:
             prev_nvi = data.at[index-1, 'nvi']
-            prev_close = data.at[index-1, close_col]
+            prev_CLOSE = data.at[index-1, close_col]
             if row[vol_col] < data.at[index-1, vol_col]:
-                nvi = prev_nvi + (row[close_col] - prev_close / prev_close * prev_nvi)
+                nvi = prev_nvi + (row[close_col] - prev_CLOSE / prev_CLOSE * prev_nvi)
             else: 
                 nvi = prev_nvi
         else:
@@ -465,15 +473,15 @@ Params:
 Returns:
     copy of 'data' DataFrame with 'pvi' and 'pvi_ema' columns added
 """
-def positive_volume_index(data, periods=255, close_col='<CLOSE>', vol_col='<VOL>'):
+def positive_volume_index(data, periods=255, close_col=CLOSE, vol_col=VOLUME):
     data['pvi'] = 0.
     
     for index,row in data.iterrows():
         if index > 0:
             prev_pvi = data.at[index-1, 'pvi']
-            prev_close = data.at[index-1, close_col]
+            prev_CLOSE = data.at[index-1, close_col]
             if row[vol_col] > data.at[index-1, vol_col]:
-                pvi = prev_pvi + (row[close_col] - prev_close / prev_close * prev_pvi)
+                pvi = prev_pvi + (row[close_col] - prev_CLOSE / prev_CLOSE * prev_pvi)
             else: 
                 pvi = prev_pvi
         else:
@@ -494,13 +502,13 @@ Params:
 Returns:
     copy of 'data' DataFrame with 'momentum' column added
 """
-def momentum(data, periods=14, close_col='<CLOSE>'):
+def momentum(data, periods=14, close_col=CLOSE):
     data['momentum'] = 0.
     
     for index,row in data.iterrows():
         if index >= periods:
-            prev_close = data.at[index-periods, close_col]
-            val_perc = (row[close_col] - prev_close)/prev_close
+            prev_CLOSE = data.at[index-periods, close_col]
+            val_perc = (row[close_col] - prev_CLOSE)/prev_CLOSE
 
             data.set_value(index, 'momentum', val_perc)
 
@@ -517,7 +525,7 @@ Params:
 Returns:
     copy of 'data' DataFrame with 'rsi' column added
 """
-def rsi(data, periods=14, close_col='<CLOSE>'):
+def rsi(data, periods=14, close_col=CLOSE):
     data['rsi_u'] = 0.
     data['rsi_d'] = 0.
     data['rsi'] = 0.
@@ -525,11 +533,11 @@ def rsi(data, periods=14, close_col='<CLOSE>'):
     for index,row in data.iterrows():
         if index >= periods:
             
-            prev_close = data.at[index-periods, close_col]
-            if prev_close < row[close_col]:
-                data.set_value(index, 'rsi_u', row[close_col] - prev_close)
-            elif prev_close > row[close_col]:
-                data.set_value(index, 'rsi_d', prev_close - row[close_col])
+            prev_CLOSE = data.at[index-periods, close_col]
+            if prev_CLOSE < row[close_col]:
+                data.set_value(index, 'rsi_u', row[close_col] - prev_CLOSE)
+            elif prev_CLOSE > row[close_col]:
+                data.set_value(index, 'rsi_d', prev_CLOSE - row[close_col])
             
     data['rsi'] = data['rsi_u'].ewm(ignore_na=False, min_periods=0, com=periods, adjust=True).mean() / (data['rsi_u'].ewm(ignore_na=False, min_periods=0, com=periods, adjust=True).mean() + data['rsi_d'].ewm(ignore_na=False, min_periods=0, com=periods, adjust=True).mean())
     
@@ -542,8 +550,8 @@ Chaikin Volatility (CV)
 Source: https://www.marketvolume.com/technicalanalysis/chaikinvolatility.asp
 Params: 
     data: pandas DataFrame
-	ema_periods: period for smoothing Highest High and Lowest Low difference
-	change_periods: the period for calculating the difference between Highest High and Lowest Low
+	ema_periods: period for smoothing Highest HIGH and Lowest LOW difference
+	change_periods: the period for calculating the difference between Highest HIGH and Lowest LOW
 	high_col: the name of the HIGH values column
 	low_col: the name of the LOW values column
 	close_col: the name of the CLOSE values column
@@ -551,7 +559,7 @@ Params:
 Returns:
     copy of 'data' DataFrame with 'chaikin_volatility' column added
 """
-def chaikin_volatility(data, ema_periods=10, change_periods=10, high_col='<HIGH>', low_col='<LOW>', close_col='<CLOSE>'):
+def chaikin_volatility(data, ema_periods=10, change_periods=10, high_col=HIGH, low_col=LOW, close_col=CLOSE):
     data['ch_vol_hl'] = data[high_col] - data[low_col]
     data['ch_vol_ema'] = data['ch_vol_hl'].ewm(ignore_na=False, min_periods=0, com=ema_periods, adjust=True).mean()
     data['chaikin_volatility'] = 0.
@@ -581,17 +589,17 @@ Params:
 Returns:
     copy of 'data' DataFrame with 'williams_ad' column added
 """
-def williams_ad(data, high_col='<HIGH>', low_col='<LOW>', close_col='<CLOSE>'):
+def williams_ad(data, high_col=HIGH, low_col=LOW, close_col=CLOSE):
     data['williams_ad'] = 0.
     
     for index,row in data.iterrows():
         if index > 0:
             prev_value = data.at[index-1, 'williams_ad']
-            prev_close = data.at[index-1, close_col]
-            if row[close_col] > prev_close:
-                ad = row[close_col] - min(prev_close, row[low_col])
-            elif row[close_col] < prev_close:
-                ad = row[close_col] - max(prev_close, row[high_col])
+            prev_CLOSE = data.at[index-1, close_col]
+            if row[close_col] > prev_CLOSE:
+                ad = row[close_col] - min(prev_CLOSE, row[low_col])
+            elif row[close_col] < prev_CLOSE:
+                ad = row[close_col] - max(prev_CLOSE, row[high_col])
             else:
                 ad = 0.
                                                                                                         
@@ -612,7 +620,7 @@ Params:
 Returns:
     copy of 'data' DataFrame with 'williams_r' column added
 """
-def williams_r(data, periods=14, high_col='<HIGH>', low_col='<LOW>', close_col='<CLOSE>'):
+def williams_r(data, periods=14, high_col=HIGH, low_col=LOW, close_col=CLOSE):
     data['williams_r'] = 0.
     
     for index,row in data.iterrows():
@@ -634,7 +642,7 @@ Params:
 Returns:
     copy of 'data' DataFrame with 'trix' and 'trix_signal' columns added
 """
-def trix(data, periods=14, signal_periods=9, close_col='<CLOSE>'):
+def trix(data, periods=14, signal_periods=9, close_col=CLOSE):
     data['trix'] = data[close_col].ewm(ignore_na=False, min_periods=0, com=periods, adjust=True).mean()
     data['trix'] = data['trix'].ewm(ignore_na=False, min_periods=0, com=periods, adjust=True).mean()
     data['trix'] = data['trix'].ewm(ignore_na=False, min_periods=0, com=periods, adjust=True).mean()
@@ -657,7 +665,7 @@ Params:
 Returns:
     copy of 'data' DataFrame with 'ultimate_oscillator' column added
 """
-def ultimate_oscillator(data, period_1=7,period_2=14, period_3=28, high_col='<HIGH>', low_col='<LOW>', close_col='<CLOSE>'):
+def ultimate_oscillator(data, period_1=7,period_2=14, period_3=28, high_col=HIGH, low_col=LOW, close_col=CLOSE):
     data['ultimate_oscillator'] = 0.
     data['uo_bp'] = 0.
     data['uo_tr'] = 0.
